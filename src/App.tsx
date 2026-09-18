@@ -132,6 +132,38 @@ export default function App() {
 
   const [activeDial, setActiveDial] = useState<DialUnit>(null);
   const dialRef = useRef<HTMLDivElement>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  // --- Screen Wake Lock Handler ---
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.error('Screen Wake Lock error:', err);
+        }
+      }
+    };
+
+    requestWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, []);
 
   const toggleFullScreen = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
